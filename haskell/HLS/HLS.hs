@@ -1,32 +1,20 @@
 {-# LANGUAGE ViewPatterns, ScopedTypeVariables #-}
-module Color where
+module HLS (convertRGBtoHLS, convertHLStoRGB,RGB) where
 import Prelude hiding (min,max,sum,mod)
-import qualified Prelude as P
 import Data.Word (Word8, Word16)
 import Data.List (sort)
 import Data.Maybe (fromJust, isNothing)
-import Test.QuickCheck 
 import Control.Applicative
--- data RGB = RGB { r :: Word8, g :: Word8, b :: Word8 } deriving (Show, Eq)
--- data HLS = HLS { h :: Float, l :: Float, s :: Float } deriving (Show, Eq)
-
--- 3 element tuple
-mapTuple3 :: (a -> b) -> Tuple3 a -> Tuple3 b
-mapTuple3 f (x,y,z) = (f x, f y, f z)
-
-fst3 :: (a,b,c) -> a
-fst3 (x,_,_) = x
-snd3 (_,y,_) = y
-trd3 (_,_,z) = z
-
-type Tuple3 a = (a,a,a)
+import Tuple3
 
 -- utility 
 while p = until $ not . p
 
+mod :: (Ord a, Num a) => a -> a -> a
+mod x y = abs $ (subtract x) $ until ((x<=) . (+y)) (+y) 0
+
 type RGB = Tuple3 Word8
 type HLS = (Maybe Rational,Rational,Rational)
-type Chroma = Rational
 
 convertRGBtoHLS :: (Real a) => Tuple3 a -> HLS
 convertRGBtoHLS (r',g',b') =
@@ -66,15 +54,6 @@ convertHLStoRGB' (h',l,s) =
         m = l - c / 2
     in  (r + m, g + m, b + m)
 
-mod :: (Ord a, Num a) => a -> a -> a
-mod x y = abs $ (subtract x) $ until ((x<=) . (+y)) (+y) 0
 
 convertHLStoRGB :: Integral a => HLS -> Tuple3 a
 convertHLStoRGB = mapTuple3 (truncate . (maxRGB*)) .  convertHLStoRGB'
-
-exsample = convertHLStoRGB  (convertRGBtoHLS (10,155,200))
-
-test = quickCheck (\ (x :: Tuple3 Word8 )->  x == ((convertHLStoRGB . convertRGBtoHLS) x))
-
-torelance n (x,y,z) (a,b,c) = all (<n) [diff x a, diff y b, diff z c]
-    where diff n m = P.max n m - P.min n m
