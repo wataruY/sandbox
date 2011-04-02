@@ -9,7 +9,7 @@ import Data.Word
 env = HLSEnv { maxRGB = 0xff, maxHue = 360 }
 run' = flip HLS.run env
 
-example = test $ (10,155,200) 
+example = test (10,155,200) 
 
 
 test x = run' $ convertRGBtoHLS (f x) >>= convertHLStoRGB

@@ -1,4 +1,4 @@
-{-# LANGUAGE ViewPatterns, DeriveFunctor, ScopedTypeVariables #-}
+{-# LANGUAGE DeriveFunctor, ScopedTypeVariables #-}
 module
     HLS
     (convertRGBtoHLS, convertHLStoRGB,RGB, run, HLSEnv (..))
@@ -21,11 +21,12 @@ type HLSMT a m = ReaderT (HLSEnv a) m
 
 
 mod :: (Ord a, Num a) => a -> a -> a
-mod x y = abs $ (subtract x) $ until ((x<=) . (+y)) (+y) 0
+mod x y = abs $ subtract x $ until ((x<=) . (+y)) (+y) 0
 
 type RGB = Tuple3 Word8
 type HLS = (Maybe Rational,Rational,Rational)
 type RGB' = Tuple3 Rational
+
 getMaxRGB, getMaxHue :: Real a => Reader (HLSEnv a) a
 getMaxRGB = asks maxRGB
 getMaxHue = asks maxHue
@@ -34,7 +35,7 @@ toHLSM :: (Real e, Monad m) => m a -> HLSMT e m a
 toHLSM = lift
 
 run :: HLSM a b -> HLSEnv a -> b
-run x e = runReader x e
+run = runReader
 
 convertRGBtoHLS :: forall a. (Real a, Integral a) => Tuple3 a -> HLSM a HLS
 convertRGBtoHLS (r',g',b') = do
@@ -50,7 +51,7 @@ convertRGBtoHLS (r',g',b') = do
          | otherwise = Just $ (r - g) / c + 4
       l = (max + min) / 2
       s | c == 0 = 0
-        | otherwise = c / (1 - (abs $ 2 * l - 1))
+        | otherwise = c / (1 - abs (2 * l - 1))
   (h :: Maybe Rational) <- (trick toRational  :: HLSMT Rational Maybe Rational -> HLSM a (Maybe Rational)) $
                            (toHLSM :: Maybe Rational -> HLSMT Rational Maybe Rational)
                            ((\ x -> x * maxHue / 6 ) <$> h')
@@ -60,7 +61,7 @@ convertRGBtoHLS (r',g',b') = do
 adjustHue' :: Real a => a -> HLSM a a
 adjustHue' x = do
   maxHue <- getMaxHue
-  return $ while (maxHue<=) (subtract maxHue) $ until (0<=) (+maxHue) $ x
+  return $ while (maxHue<=) (subtract maxHue) $ until (0<=) (+maxHue) x
 
 adjustHue :: (Real a, Monad m) => a -> HLSMT a m a
 adjustHue = toTrans' return . adjustHue'
@@ -79,9 +80,9 @@ trick f x = reader $ \ (r :: HLSEnv b) -> runReaderT x (fmap f r)
 convertHLStoRGB' :: (Num a, Real a) => HLS -> HLSM a RGB'
 convertHLStoRGB' (h',l,s) = do
   maxHue <- toRational <$> getMaxHue
-  let c = (1 - (abs $ 2*l - 1)) * s
+  let c = (1 - abs (2*l - 1)) * s
       h = maybe undefined (/ (maxHue / 6)) h'
-      x = c * (1 - (abs $ h `mod` 2 - 1))
+      x = c * (1 - abs (h `mod` 2 - 1))
       (r, g, b) | isNothing h' = (0,0,0)
                 | h < 1 = (c, x, 0)
                 | h < 2 = (x, c, 0)
