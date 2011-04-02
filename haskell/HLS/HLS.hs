@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveFunctor, ScopedTypeVariables #-}
 module
     HLS
-    (convertRGBtoHLS, convertHLStoRGB,RGB, run, HLSEnv (..))
+    (HLS, convertRGBtoHLS, convertHLStoRGB,RGB, run, HLSEnv (..))
     where
 import Prelude hiding (min,max,sum,mod)
 import Data.Word (Word8, Word16)
@@ -97,4 +97,4 @@ convertHLStoRGB' (h',l,s) = do
 convertHLStoRGB :: (Num a, Real a, Integral a) => HLS -> HLSM a (Tuple3 a)
 convertHLStoRGB x = do
   maxRGB <- toRational <$> getMaxRGB
-  mapTuple3 (truncate . (maxRGB*)) <$> convertHLStoRGB' x
+  mapTuple3 (round . (maxRGB*)) <$> convertHLStoRGB' x
