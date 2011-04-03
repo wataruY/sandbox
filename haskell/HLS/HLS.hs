@@ -27,7 +27,7 @@ type RGB = Tuple3 Word8
 type HLS = (Maybe Rational,Rational,Rational)
 type RGB' = Tuple3 Rational
 
-getMaxRGB, getMaxHue :: Real a => Reader (HLSEnv a) a
+getMaxRGB, getMaxHue :: (Monad m, Real a) => ReaderT (HLSEnv a) m a
 getMaxRGB = asks maxRGB
 getMaxHue = asks maxHue
 
@@ -37,10 +37,10 @@ toHLSM = lift
 run :: HLSM a b -> HLSEnv a -> b
 run = runReader
 
-convertRGBtoHLS :: forall a. (Real a, Integral a) => Tuple3 a -> HLSM a HLS
+convertRGBtoHLS :: forall a m. (Real a, Integral a, Monad m) => Tuple3 a -> HLSMT a m HLS
 convertRGBtoHLS (r',g',b') = do
-  (maxRGB :: Rational) <- toRational <$> getMaxRGB
-  (maxHue :: Rational) <- toRational <$> getMaxHue
+  (maxRGB :: Rational) <- liftM toRational getMaxRGB
+  (maxHue :: Rational) <- liftM toRational getMaxHue
   let cs@[r,g,b] = map ((/maxRGB) . toRational) [r',g',b']
       [min, _, max] = sort cs
       c = max - min
@@ -52,10 +52,13 @@ convertRGBtoHLS (r',g',b') = do
       l = (max + min) / 2
       s | c == 0 = 0
         | otherwise = c / (1 - abs (2 * l - 1))
-  (h :: Maybe Rational) <- (trick toRational  :: HLSMT Rational Maybe Rational -> HLSM a (Maybe Rational)) $
-                           (toHLSM :: Maybe Rational -> HLSMT Rational Maybe Rational)
-                           ((\ x -> x * maxHue / 6 ) <$> h')
-                           >>= adjustHue
+      f = undefined
+  (h :: Maybe Rational) <- let f :: Maybe Rational -> HLSMT Rational Maybe Rational
+                               f = lift
+                               g :: HLSMT Rational Maybe Rational -> HLSMT a m (Maybe Rational)
+                               g x = ReaderT $ return . runReaderT x . fmap toRational 
+                           in g $ f ((\ x -> x * maxHue / 6 ) <$> h' :: Maybe Rational)
+                                    >>= (adjustHue :: Rational -> HLSMT Rational Maybe Rational)
   return (toRational <$> h, toRational l, toRational s)
 
 adjustHue' :: Real a => a -> HLSM a a
@@ -72,8 +75,8 @@ toTrans' f x = ReaderT $ \ r -> f $ runReader x r
 fromTrans' :: Monad m => ReaderT r m a -> Reader r (m a)
 fromTrans' t = reader $ \ r -> runReaderT t r
 
-trick :: forall a b m. (Functor m) => (b -> a) -> HLSMT a m a -> HLSM b (m a)
-trick f x = reader $ \ (r :: HLSEnv b) -> runReaderT x (fmap f r)
+trick :: forall a b m. (Monad m) => (b -> a) -> HLSMT a m a -> HLSMT b m (m a)
+trick f = withReaderT (fmap f) . mapReaderT return
 
 -- type RGB' = Tuple3 Rational
 
