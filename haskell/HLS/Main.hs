@@ -28,4 +28,4 @@ main = do conf <- cmdArgs $
           case conf of
             FromRGB r g b -> print $ f $ run' $ convertRGBtoHLS (r, g, b)
                 where f (x,y,z) = ((-1) `maybe` fromRational $ x, fromRational y, fromRational z)
-            FromHLS h l s -> print $ run' $ convertHLStoRGB (Just (toRational h), (toRational l), (toRational s))
+            FromHLS h l s -> print $ run' $ convertHLStoRGB (Just $ toRational h, toRational l, toRational s)

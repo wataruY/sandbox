@@ -53,13 +53,10 @@ convertRGBtoHLS (r',g',b') = do
       s | c == 0 = 0
         | otherwise = c / (1 - abs (2 * l - 1))
       f = undefined
-  (h :: Maybe Rational) <- let f :: Maybe Rational -> HLSMT Rational Maybe Rational
-                               f = lift
-                               g :: HLSMT Rational Maybe Rational -> HLSMT a m (Maybe Rational)
+  (h :: Maybe Rational) <- let g :: HLSMT Rational Maybe Rational -> HLSMT a m (Maybe Rational)
                                g x = ReaderT $ return . runReaderT x . fmap toRational 
-                           in g $ f ((\ x -> x * maxHue / 6 ) <$> h' :: Maybe Rational)
-                                    >>= (adjustHue :: Rational -> HLSMT Rational Maybe Rational)
-  return (toRational <$> h, toRational l, toRational s)
+                           in g $ lift ((\ x -> x * maxHue / 6 ) <$> h') >>= adjustHue
+  return (h, l, s)
 
 adjustHue' :: Real a => a -> HLSM a a
 adjustHue' x = do
@@ -80,9 +77,9 @@ trick f = withReaderT (fmap f) . mapReaderT return
 
 -- type RGB' = Tuple3 Rational
 
-convertHLStoRGB' :: (Num a, Real a) => HLS -> HLSM a RGB'
+convertHLStoRGB' :: (Num a, Real a, Monad m) => HLS -> HLSMT a m RGB'
 convertHLStoRGB' (h',l,s) = do
-  maxHue <- toRational <$> getMaxHue
+  maxHue <- toRational `liftM` getMaxHue
   let c = (1 - abs (2*l - 1)) * s
       h = maybe undefined (/ (maxHue / 6)) h'
       x = c * (1 - abs (h `mod` 2 - 1))
@@ -97,7 +94,7 @@ convertHLStoRGB' (h',l,s) = do
       m = l - c / 2
   return (r + m, g + m, b + m)
 
-convertHLStoRGB :: (Num a, Real a, Integral a) => HLS -> HLSM a (Tuple3 a)
+convertHLStoRGB :: (Num a, Real a, Integral a, Monad m) => HLS -> HLSMT a m (Tuple3 a)
 convertHLStoRGB x = do
-  maxRGB <- toRational <$> getMaxRGB
-  mapTuple3 (round . (maxRGB*)) <$> convertHLStoRGB' x
+  maxRGB <- toRational `liftM` getMaxRGB
+  mapTuple3 (round . (maxRGB*)) `liftM` convertHLStoRGB' x
