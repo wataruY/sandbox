@@ -99,7 +99,7 @@ apply Lt_asymmetric.
 assumption.
 Qed.
 
-Definition sto_trichotomous_lt x y : x <> y /\ ~ Lt y x <-> Lt x y.
+Theorem Lt_trichotomous_lt x y : x <> y /\ ~ Lt y x <-> Lt x y.
 split.
 intros [Hneq Hlt].
 apply Lt_ic.
@@ -117,7 +117,7 @@ apply Lt_ic in H.
 contradiction.
 Qed.
 
-Definition sto_trichitomous_gt x y : x <> y /\ ~ Lt x y <-> Lt y x.
+Theorem Lt_trichitomous_gt x y : x <> y /\ ~ Lt x y <-> Lt y x.
 split.
 intros [Hneq Hgt].
 apply Lt_ic.
@@ -150,7 +150,7 @@ apply Lt_ic.
 assumption.
 Qed.
 
-Theorem sto_trichitomous_eq x y : ~ Lt y x /\ ~ Lt x y <-> x = y.
+Theorem Lt_trichitomous_eq x y : ~ Lt y x /\ ~ Lt x y <-> x = y.
 split.
 intro.
 destruct H.
