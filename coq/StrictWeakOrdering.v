@@ -1,11 +1,14 @@
 Require Import Relations Setoid.
 
-Section Sort.
-
 Variable (A : Type).
 
 Section Relation.
   Variable (R : relation A).
+  Variable (Eq : relation A).
+  Hypothesis (Eq_equiv : equivalence _ Eq).
+  Let Eq_refl := equiv_refl _ _ Eq_equiv.
+  Let Eq_trans := equiv_trans _ _ Eq_equiv.
+  Let Eq_sym := equiv_sym _ _ Eq_equiv.
 
   Definition equal := forall x y, ~ R x y -> ~ R y x -> x = y.
   Definition totality := forall x y, R x y \/ R y x.
@@ -46,14 +49,14 @@ End Relation.
 
 Section Order_Def.
   Record TotalOrder (R : relation A) :=
-  { to_antisym : antisymmetric _ R
-    ; to_trans : transitive _ R
-    ; to_total : totality R
+  { to_antisym : antisymmetric _ R ;
+    to_trans : transitive _ R ;
+    to_total : totality R
   }.
   Record StrictTotalOrder (R' R : relation A) :=
-  { sto_to : TotalOrder R'
-    ; sto1 x y : R x y <-> R' x y /\ x <> y
-    ; sto_ic x y : R x y <-> ~ R' y x
+  { sto_to : TotalOrder R' ;
+    sto1 x y : R x y <-> R' x y /\ x <> y ;
+    sto_ic x y : R x y <-> ~ R' y x
   }.
 End Order_Def.
 
@@ -163,3 +166,4 @@ intro Heq.
 subst.
 split; apply Lt_irrefl.
 Qed.
+
