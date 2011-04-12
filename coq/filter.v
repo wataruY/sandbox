@@ -60,6 +60,7 @@ subst.
 apply All_cons; assumption.
 Qed.
 
+<<<<<<< HEAD
 Definition filter_strong {A : Type} {p : A -> Prop} (f : forall x, {p x}+{~ p x} ) (l : list A) :
            {l'| All p l' /\ forall x, In x l' -> In x l}.
 induction l as [| x xs].
