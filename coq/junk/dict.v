@@ -36,44 +36,42 @@ Proof.
   auto.
 Qed.
 
+Hint Resolve nil_cons : datatypes.
+
 Module LKey (K:KEY) : KEY with Definition A := list K.A.
  Definition A := list K.A.
  Definition eqdec : forall (a b:A), {a = b} + {a <> b}.
  Proof.
-   intro a; elim a.
-     induction b as [| b' IHb].
-       auto with datatypes.
+   intro a.
+   elim a.
+     induction b.
+       left; auto.
 
-       destruct IHIHb.
-         subst.
-         right.
-         apply nil_cons.
+       right.
+       apply nil_cons.
 
-         right; apply nil_cons.
-
-     intros a' k.
+     intros a0 k Ha.
      induction b.
        right.
        apply neq_comm.
        apply nil_cons.
-       
-       case (K.eqdec a' a0).
-         case (H b).
-           intros; subst.
-           auto with datatypes.
+     
+       case (K.eqdec a0 a1).
+         intro H0.
+         case (Ha b).
+           intro H1.
+           subst; auto with datatypes.
 
-           intro Hn.
            right.
-           contradict Hn.
-           injection Hn.
-           tauto.
-         
-         intro Hn.
+           red.
+           injection 1.
+           intros; contradiction.
+
          right.
-         contradict Hn.
-         injection Hn.
-         intro; subst.
-         tauto.
+         red.
+         injection 1.
+         intros; contradiction.
  Qed.
 End LKey.
+
 
