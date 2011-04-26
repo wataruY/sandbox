@@ -8,22 +8,15 @@ Fixpoint expt (n m:nat) : nat :=
 Section Powerset_Cardinal.
 
 Theorem power_empty_singleton (U:Type) : Power_set _ (Empty_set U) = Singleton _ (Empty_set _).
+Proof with auto with sets.
 apply Extensionality_Ensembles.
 split.
-unfold Included.
-intros.
-apply Singleton_intro.
-apply Extensionality_Ensembles.
-elim H.
-intros.
-split.
-apply Included_Empty.
-assumption.
-unfold Included.
-intros.
-elim H.
-apply Definition_of_Power_set.
-apply Included_Empty.
+  intros A Hempty.
+  apply Singleton_intro.
+  destruct Hempty...
+  intros A H.
+  apply Definition_of_Power_set.
+  rewrite (Singleton_inv _ _ _ H)...
 Qed.
 
 Theorem power_add_split
@@ -34,9 +27,9 @@ Theorem power_add_split
 apply Extensionality_Ensembles.
 split.
   (* -> *)
-  intros z H.
-  destruct H.
-  case (Included_Add _ _ _ _ H).
+  intros B hBiP.
+  destruct hBiP as [B hBiAx].
+  case (Included_Add _ _ _ _ hBiAx).
     (* X is included by A *)
     intro.
     apply Union_introl.
@@ -51,47 +44,40 @@ split.
       eassumption.
       trivial.
   (* <- *)
-  intros z H.
+  intros B HinU.
   apply Definition_of_Power_set.
-  case (Union_inv _ _ _ _ H).
+  case (Union_inv _ _ _ _ HinU).
     (* In (Power_set A) *)
-    intro H'.
-    intros y H''.
+    intro hBinP.
+    intros y hBy.
     apply Add_intro1.
-    destruct H'.
+    destruct hBinP.
     auto.
     (* In (Im (fun y => Add U y x) (Power_set A)) *)
     clear.
-    intros H y Hy.
-    destruct H.
+    intros hBinIm y hBy.
+    destruct hBinIm as [B hBinP].
     subst.
-    destruct H.
-    destruct (Add_inv _ _ _ _ Hy); try subst; auto with sets.
+    destruct hBinP.
+    destruct (Add_inv _ _ _ _ hBy); try subst; auto with sets.
 Qed.
 
 Theorem cardinal_disj (U:Type) (A:Ensemble U) (x:U) :
 ~ In _ A x -> 
 forall n, cardinal _ A n -> cardinal _ (Add _ A x) (S n).
-intro Hin.
-intros n Hcard.
-induction Hcard.
-apply card_add.
-auto with sets.
-assumption.
-apply card_add.
-apply card_add.
-assumption.
-assumption.
-assumption.
+intros hNotAx n.
+induction 1.
+  apply card_add; auto with sets.
+  apply card_add; [apply card_add|]; assumption.
 Qed.
 
 Theorem union_not_in (U:Type) (A B:Ensemble U) (x:U) :
 ~ In _ A x -> ~ In _ B x -> ~ In _ (Union _ A B) x.
-intros.
-contradict H.
-destruct ( Union_inv U A B x H).
-assumption.
-contradiction.
+intros HA HB.
+contradict HA.
+destruct ( Union_inv U A B x HA).
+  assumption.
+  contradiction.
 Qed.
 
 Theorem cardinal_union (U:Type) (A B:Ensemble U) :
@@ -101,38 +87,38 @@ forall m n, cardinal _ A m -> cardinal _ B n ->
 intros Hdisj m n HcardA.
 generalize dependent n.
 induction HcardA.
-simpl.
-rewrite Empty_set_zero.
-trivial.
-intros.
-simpl.
-rewrite Union_commutative.
-rewrite <- Union_add.
-apply card_add.
-rewrite Union_commutative.
-apply IHHcardA.
-elim Hdisj.
-intros.
-apply Disjoint_intro.
-intro y.
-assert (H2 := H1 y).
-contradict H2.
-apply Intersection_inv in H2.
-destruct H2.
-apply Intersection_intro.
-apply Add_intro1.
-assumption.
-assumption.
-assumption.
-assert (H1 : ~ In _ B x).
-elim Hdisj.
-intro.
-assert (H2 := H1 x).
-contradict H2.
-apply Intersection_intro.
-apply Add_intro2.
-assumption.
-apply union_not_in; assumption.
+  (* #A = 0 *)
+  simpl.
+  rewrite Empty_set_zero.
+  trivial.
+  (* #A n -> #A (S n) *)
+  intros.
+  simpl.
+  rewrite Union_commutative.
+  rewrite <- Union_add.
+  apply card_add.
+  rewrite Union_commutative.
+  apply IHHcardA.
+    (* preserves, A /\ B = 0 *)
+    elim Hdisj.
+    intros.
+    apply Disjoint_intro.
+    intro y.
+    assert (H2 := H1 y).
+    contradict H2.
+    apply Intersection_inv in H2.
+    destruct H2.
+    apply Intersection_intro;
+      [apply Add_intro1|]; assumption.
+    assumption.
+  (* x </- A \/ B *)
+  assert (H1 : ~ In _ B x).
+  elim Hdisj.
+  intro.
+  assert (H2 := H1 x).
+  contradict H2.
+  apply Intersection_intro;[apply Add_intro2|]; assumption.
+  apply union_not_in; assumption.
 Qed.
 
 Theorem add_same_eq_inj (U:Type) (A B:Ensemble U) (x:U) :
@@ -144,18 +130,18 @@ unfold Same_set in *|-*.
 unfold Included in *|-*.
 destruct H as [H0 H1].
 split.
-intros.
-assert (H0' := H0 _ (Add_intro1 U A x x0 H)).
-destruct (Add_inv _ _ _ _ H0').
-assumption.
-rewrite <- H2 in H.
-contradiction.
-intros y H.
-assert (H1' := H1 _ (Add_intro1 _ _ _ y H)).
-destruct (Add_inv _ _ _ _ H1').
-assumption.
-subst.
-contradiction.
+  intros.
+  assert (H0' := H0 _ (Add_intro1 U A x x0 H)).
+  destruct (Add_inv _ _ _ _ H0').
+    assumption.
+    rewrite <- H2 in H.
+    contradiction.
+  intros y H.
+  assert (H1' := H1 _ (Add_intro1 _ _ _ y H)).
+  destruct (Add_inv _ _ _ _ H1').
+    assumption.
+    subst.
+    contradiction.
 Qed.
 
 Theorem im_preserve_cardinal (U:Type) (A:Ensemble (Ensemble U)) (x:U) n :
