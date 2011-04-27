@@ -413,3 +413,98 @@ extensionality=> x.
   by case=> Ax Bx; split.
   by destruct 1 as [x Ax nBx]; split.
 Qed.
+
+Theorem set_minus_disjoint (A B:set)
+: A ∖ B = A <-> Disjoint _ A B.
+split.
+  move=> H.
+  apply Extension in H.
+  destruct H as [H0 H1].
+  split=> x.
+  move=> nAB.
+  destruct nAB.
+  absurd (x ∈ B).
+    by apply H1.
+    done.
+  case =>H.
+  extensionality=> x.
+    by case.
+    move=> Ax.
+    split.
+      done.
+      move=> Bx.
+      by destruct (H x).
+Qed.
+
+Theorem set_minus_intersect (A B:set)
+: A ∖ B = A ⋂ ∁ B.
+by extensionality=> x; destruct 1; split.
+Qed.
+
+Theorem inn_complement (A:set) (x:U)
+: x ∉ A <-> x ∈ ∁ A.
+by split=> H H'; case: H.
+Qed.
+
+Theorem set_subet_is_minus_empty (A B:set) (Hclassic:forall P, ~~P -> P)
+: A ∖ B = ∅ <-> A ⊆ B.
+split.
+  move=> H x Ax.
+  apply Extension in H.
+  destruct H as [H0 _].
+  have H : (x ∉ (A ∖ B)).
+    move=> H.
+    by elim (H0 x).
+  rewrite set_minus_intersect in H.
+  apply (proj1 (inn_complement _ x)) in H.
+  rewrite (de_morgan_iu _ _ Hclassic) in H.
+  destruct H.
+    by contradiction.
+    by apply Hclassic in H.
+  move=> AB.
+  extensionality=> x.
+    rewrite set_minus_intersect.
+    destruct 1 as [x Ax cBx].
+    elim cBx.
+    by apply AB.
+    done.    
+Qed.
+
+Require Import Ring.
+
+Theorem intersection_fullset (A:set)
+: (Full_set _) ⋂ A = A.
+extensionality=> x.
+  by case.
+  by move=> Ax; split.
+Qed.
+
+Theorem intersection_empty_zero (A:set)
+: ∅ ⋂ A = ∅.
+extensionality=> x.
+  by destruct 1.
+  by intro.
+Qed.
+
+Definition set_semi_ring : semi_ring_theory (R:=set) (Empty_set _) (Full_set _) (Union _) (Intersection _) eq.
+split.
+  apply empty_union_unit.
+  apply union_comm.
+  apply union_assoc.
+  apply intersection_fullset.
+  apply intersection_empty_zero.
+  apply intersection_comm.
+  apply intersection_assoc.
+  apply union_distr_intersection.
+Defined.
+
+Add Ring set_semi_ring : set_semi_ring.
+
+Theorem minus_distrib_union (A B C:set)
+: A ∖ (B ⋃ C) = (A ∖ B) ⋂ (A ∖ C).
+do 3 rewrite set_minus_intersect.
+rewrite de_morgan_ui.
+pattern A at 1.
+rewrite <- (intersection_idemp A).
+ring.
+Qed.
