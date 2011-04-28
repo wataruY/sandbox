@@ -1,7 +1,19 @@
 Require Import Ensembles ssreflect Relations Constructive_sets.
-Load Set_Notations.
+Load ch01_s02_setminus.
+Definition classic := forall P:Prop, ~~P -> P.
+Definition EOM := forall P:Prop, P \/ ~ P.
 
-
+Lemma nnppEom : classic -> EOM.
+rewrite /classic /EOM.
+move=> H.
+move=> P.
+apply H.
+move=> H0.
+elim H0.
+right.
+contradict H0.
+tauto.
+Qed.
 
 Section Sets.
 Variable U:Type.
@@ -159,7 +171,7 @@ move=> AiB x ACx.
 by case: ACx => y Ay Cy; split; first apply AiB.
 Qed.
 
-Ltac extensionality := apply Extensionality_Ensembles; split.
+
 
 Theorem union_distr_intersection (A B C:set)
 : (A ⋃ B) ⋂ C = (A ⋂ C) ⋃ (B ⋂ C).
@@ -207,17 +219,14 @@ Inductive DSum (B C:set) : set :=
   | DSum_intro x : Disjoint _ B C -> x ∈ (B ⋃ C) -> DSum B C x.
 Notation "A ⨁ B" := (DSum A B) (at level 8) : set_scope.
 
-Notation "∁ A" := (Complement _ A) (at level 1) : set_scope.
 Notation Univ := (Full_set _).
 
-Definition EOM (A:set) := forall x:U, A x \/ ~ A x.
-
 Theorem union_compl_univ (A:set)
- (Heom:EOM A) : A ⋃ ∁ A = Univ.
+ (Hclassic:classic) : A ⋃ ∁ A = Univ.
 extensionality.
   done.
   move=>x H.
-  case (Heom x).
+  case (nnppEom Hclassic (x∈A)).
     by left.
     by right.
 Qed.
@@ -230,9 +239,9 @@ extensionality=> x.
 Qed.
 
 Theorem compl_compl (A:set)
-  (Heom:EOM A) : ∁ (∁ A) = A.
+  (Hclassic:classic) : ∁ (∁ A) = A.
 extensionality=> x.
-  by case (Heom x).
+  by case (nnppEom Hclassic (x∈A)).
   by move=> Ax CAx.
 Qed.
 
@@ -251,7 +260,7 @@ extensionality=> x.
   done.
 Qed.
 
-Theorem compl_imp (A B:set) (Heom:EOM B)
+Theorem compl_imp (A B:set) (Hclassic:classic)
 : A ⊆ B <-> ∁ B ⊆ ∁ A.
 split.
   move=> AiB x hB hA.
@@ -259,7 +268,7 @@ split.
   by apply AiB.
   rewrite /Complement /Included /In.
   intros.
-  case: (Heom x).
+  case: (nnppEom Hclassic (x∈B)).
     done.
     move => H1.
     contradict H0.
@@ -277,7 +286,7 @@ extensionality =>x.
 Qed.
 
 Theorem de_morgan_iu (A B:set)
-        (Hclassic: forall P:Prop, ~~P -> P)
+        (Hclassic:classic)
 : ∁(A ⋂ B) = ∁ A ⋃ ∁ B.
 extensionality=> x H.
   apply Hclassic.
@@ -289,12 +298,6 @@ Qed.
 
 Definition Set_family :=  Ensemble set.
 
-Inductive UnionSF (U:Type) (UU:Ensemble (Ensemble U)) : Ensemble U :=
-  UnionSF_intro (x:U) :
-  (exists A, A ∈ UU /\ x ∈ A) -> UnionSF _ UU x.
-Inductive IntersectionSF (U:Type) (UU:Ensemble (Ensemble U)) : Ensemble U :=
-  IntersectionSF_intro  (x:U) :
-  (forall A, A∈UU -> x ∈ A) -> IntersectionSF _ UU x.
 
 Theorem union_family_inc
         (UU:Ensemble set) (A:set)
@@ -387,60 +390,6 @@ Qed.
 
 (* A ⋂ B = ∅ <-> ∁ A ⊇ B <-> A ⊆ ∁ B *)
 
-Theorem set_union_minus (A B:set)
-: A ∖ B = (A ⋃ B) ∖ B.
-extensionality=> x.
-  case=> Ax nBx.
-  by split;first left.
-  by case; destruct 1 as [x Ax| x Bx]; move=> nBx; split.
-Qed.
-
-Theorem set_minus_intersection (A B:set)
-: A ∖ B = A ∖ A ⋂ B.
-extensionality=> x.
-  case=> Ax nBx; split.
-    done.
-    by contradict nBx; case nBx.
-  case=> Ax nABx; split.
-    done.
-    contradict nABx.
-    by split.
-Qed.
-
-Theorem set_minus_compl_intersection (A B:set)
-: A ∖ B = A ⋂ ∁ B.
-extensionality=> x.
-  by case=> Ax Bx; split.
-  by destruct 1 as [x Ax nBx]; split.
-Qed.
-
-Theorem set_minus_disjoint (A B:set)
-: A ∖ B = A <-> Disjoint _ A B.
-split.
-  move=> H.
-  apply Extension in H.
-  destruct H as [H0 H1].
-  split=> x.
-  move=> nAB.
-  destruct nAB.
-  absurd (x ∈ B).
-    by apply H1.
-    done.
-  case =>H.
-  extensionality=> x.
-    by case.
-    move=> Ax.
-    split.
-      done.
-      move=> Bx.
-      by destruct (H x).
-Qed.
-
-Theorem set_minus_intersect (A B:set)
-: A ∖ B = A ⋂ ∁ B.
-by extensionality=> x; destruct 1; split.
-Qed.
-
 Theorem inn_complement (A:set) (x:U)
 : x ∉ A <-> x ∈ ∁ A.
 by split=> H H'; case: H.
@@ -500,11 +449,68 @@ Defined.
 
 Add Ring set_semi_ring : set_semi_ring.
 
+
+
 Theorem minus_distrib_union (A B C:set)
 : A ∖ (B ⋃ C) = (A ∖ B) ⋂ (A ∖ C).
-do 3 rewrite set_minus_intersect.
+elim_setminus.
 rewrite de_morgan_ui.
 pattern A at 1.
 rewrite <- (intersection_idemp A).
 ring.
 Qed.
+
+Theorem minus_distrib_intersection (A B C:set) (H:forall P:Prop, ~~P -> P)
+: A ∖ (B ⋂ C) = (A ∖ B) ⋃ (A ∖ C).
+elim_setminus.
+rewrite de_morgan_iu; last done.
+ring.
+Qed.
+
+Theorem union_minus_distrib (A B C:set) 
+: (A ⋃ B) ∖ C = (A ∖ C) ⋃ (B ∖ C).
+elim_setminus; ring.
+Qed.
+
+Theorem intersection_minus_distrib (A B C:set)
+: (A ⋂ B) ∖ C = (A ∖ C) ⋂ (B ∖ C).
+elim_setminus.
+pattern (∁ C) at 1.
+rewrite <- intersection_idemp.
+ring.
+Qed.
+
+Theorem intersection_minus_distrib_r (A B C:set) (H:classic)
+: A ⋂ (B ∖ C) = A⋂B ∖ A⋂C.
+elim_setminus.
+rewrite de_morgan_iu; last done.
+cutrewrite ((A ⋂ B) ⋂ (∁A ⋃ ∁C) = B ⋂ (A ⋂ (∁A ⋃ ∁C))); last ring.
+replace (A ⋂ (∁A ⋃ ∁C)) with (A ⋂ ∁ C); first ring.
+  rewrite (intersection_comm _ (∁A ⋃ ∁C)).
+  rewrite union_distr_intersection.
+  rewrite (intersection_comm (∁ A) A).
+  rewrite intersection_compl_empty.
+  rewrite empty_union_unit.
+  ring.
+Qed.
+
+Theorem minus_minus_union (A B C:set)
+: A ∖ B ∖ C = A ∖ (B ⋃ C).
+elim_setminus.
+rewrite de_morgan_ui.
+ring.
+Qed.
+
+Theorem minus_minus_distr (A B C:set) (H:classic)
+: A ∖ (B ∖ C) = (A ∖ B) ⋃ A ⋂ C.
+elim_setminus.
+rewrite (de_morgan_iu _ _ H).
+rewrite intersection_comm.
+rewrite union_distr_intersection.
+rewrite (compl_compl _ H).
+ring.
+Qed.
+
+
+End Union.
+End Sets.
