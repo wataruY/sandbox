@@ -12,4 +12,3 @@ Notation "x ∈ A" := (In _ A x) (at level 20, no associativity) : set_scope.
 Notation "x ∉ A" := (not (In _ A x)) (at level 20, no associativity) : set_scope.
 Notation "∅" := (Empty_set _) : set_scope.
 Notation "∁ A" := (Complement _ A) (at level 1) : set_scope.
-

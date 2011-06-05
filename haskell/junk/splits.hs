@@ -1,6 +1,9 @@
 import Data.List (unfoldr)
 import Control.Arrow
+import Data.Word
 import Test.QuickCheck
+
+
 
 splits xs = unfoldr psi 0 ++ [(xs,[])]
     where psi n = let ys@(_,zs) = splitAt n xs
