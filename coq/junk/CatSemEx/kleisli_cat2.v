@@ -16,8 +16,6 @@ Defined.
 
 End objCt_mor.
 
-
-
 Definition compT : forall a b c:objCt, a ---> M b -> b ---> M c -> a ---> M c.
 intros a b c f g.
 eapply comp.
@@ -26,7 +24,7 @@ eapply comp.
 apply Fmor.
 apply g.
 apply (Mu (MonaD_struct:=M) c).
-Defined.
+*Defined.
 
 Program Instance Kleisli_category_struct : Cat_struct (fun a b => a ---> M b):=
 { mor_oid := objCt_mor_oid

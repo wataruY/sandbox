@@ -69,4 +69,3 @@ Qed.
 Definition list_monad : MonaD type_cat := Build_MonaD list_monad_struct.
 
 End List_Monad.
-
