@@ -1,4 +1,4 @@
-Require Export TYPE.
+Require Export SET.
 Require Import CatSem.CAT.functor.
 Require Import List.
 

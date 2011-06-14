@@ -1,4 +1,4 @@
-Require Import exponent.
+Require Export CatSem.CAT.product.
 
 Notation "a ∏ b" := (product a b) (at level 40).
 Notation "f × g" := (product_mor _ f g) (at level 40).

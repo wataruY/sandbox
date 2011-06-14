@@ -1,5 +1,11 @@
-Require Import CatSem.CAT.monad_def.
-Require Import CatSem.CAT.monad_haskell.
+Require Export CatSem.CAT.monad_def.
+Require Export CatSem.CAT.monad_haskell.
+
+Set Implicit Arguments.
+Unset Strict Implicit.
+
+Unset Automatic Introduction.
+
 
 Section Kleisli_Monad.
 
@@ -55,3 +61,7 @@ simpl.
 unfold eta.
 apply join_weta.
 Qed.
+
+Definition kleisli_is_monad := Build_MonaD kleisli_monad_struct.
+
+End Kleisli_Monad.

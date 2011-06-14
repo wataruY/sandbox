@@ -1,0 +1,52 @@
+# ------------------------------------------------------------
+# ルール部
+# ------------------------------------------------------------
+# コンパイル
+CATSEM_ROOT = ~/benedict/CatSem
+%.vo %.glob: %.v
+	coqc -R $(CATSEM_ROOT) CatSem $<
+
+# 依存関係の解析
+# パスは適宜変更してください
+.SCANNER: %.vo: %.v
+	coqdep -w -coqlib /usr/local/lib/coq/ -R $(CATSEM_ROOT) CatSem -I . $<
+
+# 便利関数
+public.Proof(files) =
+	vo=$(addsuffix .vo,$(files))
+	value $(vo)
+
+# ------------------------------------------------------------
+# 利用例:
+# A.v B.v C.vをコンパイルしたい場合
+# ------------------------------------------------------------
+FILES[] =
+	kleisli_cat
+	exponent_cmath
+	exponentiation_lemmas
+	exponentiation
+	exponentiation_notations
+	haskell_monad
+	kleisli_cat_haskell
+	kleisli_cat
+	liftM2
+	list_aux
+	list_functor
+	list_monad
+	list_nt_aux
+	monad_haskell
+	option_functor
+	product_functor
+	product_lemmas
+	product_lemmata
+	product_notations
+	SET_examples
+	SET
+	term_prod
+	MON
+
+.DEFAULT: $(Proof $(FILES))
+
+.PHONY: clean
+clean:
+	rm -f *.vo *.glob *~ *.omc .omakedb .omakedb.lock *.html
