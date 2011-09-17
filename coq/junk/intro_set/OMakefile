@@ -1,0 +1,32 @@
+# ------------------------------------------------------------
+# ルール部
+# ------------------------------------------------------------
+# コンパイル
+CATSEM_ROOT = ~/benedict/CatSem
+%.vo %.glob: %.v
+	coqc -R $(CATSEM_ROOT) CatSem $<
+
+# 依存関係の解析
+# パスは適宜変更してください
+.SCANNER: %.vo: %.v
+	coqdep -w -coqlib /usr/local/lib/coq/ -R $(CATSEM_ROOT) CatSem -I . $<
+
+# 便利関数
+public.Proof(files) =
+	vo=$(addsuffix .vo,$(files))
+	value $(vo)
+
+# ------------------------------------------------------------
+# 利用例:
+# A.v B.v C.vをコンパイルしたい場合
+# ------------------------------------------------------------
+FILES[] =
+	Product
+	Set_Notations
+
+
+.DEFAULT: $(Proof $(FILES))
+
+.PHONY: clean
+clean:
+	rm -f *.vo *.glob *~ *.omc .omakedb .omakedb.lock *.html
