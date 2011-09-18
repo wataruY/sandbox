@@ -4,63 +4,55 @@ Require Export CatSem.CAT.functor.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Transparent Obligations.
-(* for coq 8.3 rc1 *)
-
-Unset Automatic Introduction.
 
 Section FAlgebra.
 Variable C:Cat.
+Variable F:Functor C C.
 
-Variable F : Functor C C.
-
-Record F_Algebra_struct (A:C) := {
-  falg_functor := F
-; falg_alpha :> F A ---> A 
+Record F_Algebra :=
+{ F_Algebra_obj :> C
+; F_Algebra_alg :> F F_Algebra_obj ---> F_Algebra_obj
 }.
 
-Record F_Alg := 
-{ Falg_obj :> C
-; Falg_struct :> F_Algebra_struct Falg_obj
-}.
+Record F_Algebra_mor (FA FB:F_Algebra) :=
+  { F_Algebra_mor_mor :> FA ---> FB
+  ; F_Algebra_mor_prop : comp (Cat_struct:=C)  FA (F_Algebra_mor_mor) == #F F_Algebra_mor_mor ;; FB}.
 
-Section FALG.
+Infix "--->_F" := F_Algebra_mor (at level 60, right associativity).
 
-Record Falg_morphism (Fa Fb:F_Alg) :=
-{ falg_morphism_morph :> Fa ---> Fb
-; falg_morphism_prop :> falg_alpha Fa ;; falg_morphism_morph == #F falg_morphism_morph ;; falg_alpha Fb
-}.
-
-Program Definition Falg_morph_comp (Fa Fb Fc:F_Alg) (f: Falg_morphism Fa Fb) (g:Falg_morphism Fb Fc) : Falg_morphism Fa Fc :=
-Build_Falg_morphism (falg_morphism_morph := f ;; g) _.
+Program Instance F_Algebra_mor_oid (FA FB:F_Algebra) : Setoid (FA --->_F FB) :=
+  { equiv f g := (F_Algebra_mor_mor f) == g }.
 Next Obligation.
-intros a b c f g.
-rewrite <- assoc.
-rewrite (falg_morphism_prop f).
-rewrite assoc.
-rewrite (falg_morphism_prop g).
-rewrite preserve_comp.
-rewrite assoc.
-reflexivity.
-apply F.
-Qed.
-
-Program Instance Falg_morph_oid : forall Fa Fb : F_Alg, Setoid (Falg_morphism Fa Fb) :=
-{ equiv f g := falg_morphism_morph f == falg_morphism_morph g }.
-Next Obligation.
+intros a b.
 split.
-  intros f;reflexivity.
+  intros f; reflexivity.
 
-  intros f g H;symmetry; assumption.
+  intros f g H; symmetry; assumption.
 
   intros f g h H0 H1; etransitivity; eauto.
 Qed.
 
-Program Definition Falg_morph_id (Fa:F_Alg) : Falg_morphism Fa Fa :=
-Build_Falg_morphism (falg_morphism_morph := (id (Falg_obj Fa))) _.
-Solve Obligations using cat.
+Definition F_Algebra_mor_id (A:F_Algebra) : A --->_F A.
+split with (id (F_Algebra_obj A)).
+cat.
+Defined.
 
-Program Instance Falg_cat_struct : Cat_struct Falg_morphism :=
-{ comp := Falg_morph_comp ; mor_oid := Falg_morph_oid ; id := Falg_morph_id }.
+Definition F_Algebra_mor_comp (a b c:F_Algebra) (f: a --->_F b) (g: b --->_F c) : a --->_F c.
+split with (F_Algebra_mor_mor f ;; g).
+pose (H:=comp_oid (Cat_struct:=C)).
+rewrite <- assoc.
+rewrite (F_Algebra_mor_prop f).
+rewrite assoc.
+rewrite (preserve_comp (Functor_struct:=F)).
+rewrite (F_Algebra_mor_prop g).
+rewrite assoc.
+reflexivity.
+Defined.
+
+Program Instance F_Algebra_Cat_struct : Cat_struct F_Algebra_mor :=
+{ mor_oid := F_Algebra_mor_oid 
+; id := F_Algebra_mor_id
+; comp := F_Algebra_mor_comp }.
 Solve Obligations using cat.
 Next Obligation.
 intros a b c f g H0 h i H1.
@@ -69,12 +61,12 @@ rewrite H0; rewrite H1.
 reflexivity.
 Qed.
 Next Obligation.
-simpl; intros.
+intros a b c d f g h.
+simpl in *.
 rewrite assoc.
 reflexivity.
 Qed.
 
-End FALG.
+Definition FALG : Cat := Build_Cat F_Algebra_Cat_struct.
 
-End FAlgebra. 
-
+End FAlgebra.
