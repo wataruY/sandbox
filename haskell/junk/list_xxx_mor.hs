@@ -7,6 +7,10 @@ import Control.Comonad
 import Control.Monad.Free
 import Control.Arrow
 
+unfoldr' :: (b -> Maybe (a,b)) -> b -> [a]
+unfoldr' f = foldr psi (const []) $ fix (undefined:)
+    where psi _ ct e = maybe [] (\ (x,e') -> x : ct e') $ f e
+          fix g = g (fix g)
 
 dropApo :: Int -> [a] -> [a]
 dropApo = curry $ apo psi
