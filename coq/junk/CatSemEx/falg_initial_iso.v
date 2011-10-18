@@ -46,37 +46,31 @@ Hint Resolve InitMorC : falg.
 
 Let FA_to_A : FA --->_F 0.
 exists α.
-reflexivity.
+cat.
 Defined.
 Hint Resolve FA_to_A : falg.
 
 Program Let A_to_FA : 0 --->_F FA :=
   Build_FAlg_map (FAlg_map_mor:=! FA) _.
 Next Obligation.
-unfold α_inv.
-apply (FAlg_map_prop (! FA) ).
-
+apply (FAlg_map_prop (! FA)).
 Qed.
 Hint Resolve A_to_FA : falg.
 
 Theorem A_FA_A_id : A_to_FA ;; FA_to_A == id 0.
-rewrite InitMorUnique.
-symmetry.
-rewrite InitMorUnique.
-reflexivity.
+transitivity (! 0);[apply InitMorUnique | apply init_reflection].
 Qed.
 Hint Resolve A_FA_A_id : falg.
 
 Theorem F_inv_F_alpha_id : #F α_inv ;; #F α == id (F A).
 simpl.
-etransitivity.
-  symmetry; apply (preserve_comp (Functor_struct:=F)).
+transitivity (#F (α_inv ;; α)).
+  rewrite (preserve_comp (Functor_struct:=F)); reflexivity.
 rewrite <- (preserve_ident (Functor_struct:=F)).
 apply (functor_map_morphism (Functor_struct:=F)).
-unfold A.
-transitivity (id (Cat_struct:=C) 0).
-apply A_FA_A_id.
-reflexivity.
+transitivity (id A).
+  exact A_FA_A_id.
+  reflexivity.
 Qed.
 Hint Resolve F_inv_F_alpha_id : falg.
 
