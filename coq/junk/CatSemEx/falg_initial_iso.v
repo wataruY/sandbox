@@ -1,111 +1,93 @@
 Require Import falg.
 Require Import CatSem.CAT.monic_epi.
 Require Import CatSem.CAT.initial_terminal.
+Require Import aux.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 
-
 Section Cat.
 Variable C:Cat.
 Variable F:Functor C C.
-Let FAlg := FALG F.
+Let FALG := falg.FALG F.
 
-Section InitialFalgebra.
-
-Definition InitialAlgebra := Initial FAlg.
-
-End InitialFalgebra.
+Context (InitialAlgebra : Initial FALG).
 
 Section LambekTheorem.
 
-Variable InitAlg : InitialAlgebra.
+Notation "0" :=(Init (Initial:=InitialAlgebra)).
+Notation "!" := (InitMor (Initial:=InitialAlgebra)).
+Infix "--->_F" := (mor (c:=FALG)) (at level 81).
 
-Let A := F_Algebra_obj (Init (Initial:=InitAlg)).
-Let α := F_Algebra_alg (Init (Initial:=InitAlg)).
+Let A := FAlg_obj 0.
+Let α := FAlg_alpha 0.
+
 Hint Unfold A.
 Hint Unfold α.
 
-Let FA : F_Algebra F.
-apply (Build_F_Algebra (F_Algebra_obj:= F A)).
-unfold A.
+Let FA : FALG.
+exists (F A).
 apply Fmor.
 apply α.
 Defined.
 Hint Unfold FA.
 
-Let α_inv : A ---> F A.
-pose (FA' := F_Algebra_mor_mor (InitMor (Initial:=InitAlg) FA)).
-info auto.
-Defined.
+Let α_inv : A ---> F A := ! FA.
 Hint Unfold α_inv.
 
 Theorem InitMorC : α ;; α_inv == #F α_inv ;; #F α.
 unfold α, α_inv.
 etransitivity.
-  apply (F_Algebra_mor_prop (InitMor (Initial:=InitAlg) FA)).
-symmetry.
+  apply (FAlg_map_prop (! FA)).
 simpl.
-unfold A.
 apply comp_oid; reflexivity.
 Qed.
 Hint Resolve InitMorC : falg.
 
-Definition FX_X_map : F_Algebra_mor FA (Init (Initial:=InitAlg)).
-apply Build_F_Algebra_mor with (F_Algebra_mor_mor := α).
-simpl.
+Let FA_to_A : FA --->_F 0.
+exists α.
 reflexivity.
 Defined.
-Hint Resolve FX_X_map : falg.
+Hint Resolve FA_to_A : falg.
 
-Program Definition X_FX_map : F_Algebra_mor (Init (Initial:=InitAlg)) FA :=
-  Build_F_Algebra_mor (F_Algebra_mor_mor := α_inv) _.
+Program Let A_to_FA : 0 --->_F FA :=
+  Build_FAlg_map (FAlg_map_mor:=! FA) _.
 Next Obligation.
 unfold α_inv.
-apply (F_Algebra_mor_prop (InitMor (Initial:=InitAlg) FA) ).
-Qed.
-Hint Resolve X_FX_map : falg.
+apply (FAlg_map_prop (! FA) ).
 
-Theorem X_FX_X_id : comp (Cat_struct:=FAlg) X_FX_map FX_X_map == id (Init (Initial:=InitAlg)).
+Qed.
+Hint Resolve A_to_FA : falg.
+
+Theorem A_FA_A_id : A_to_FA ;; FA_to_A == id 0.
 rewrite InitMorUnique.
 symmetry.
 rewrite InitMorUnique.
 reflexivity.
 Qed.
-Hint Resolve X_FX_map : falg.
+Hint Resolve A_FA_A_id : falg.
 
-Theorem FX_comp_Finv_id_FX : #F α_inv ;; #F α == id (F A).
+Theorem F_inv_F_alpha_id : #F α_inv ;; #F α == id (F A).
+simpl.
 etransitivity.
-  symmetry; apply preserve_comp.
-    apply F.
-symmetry; etransitivity.
-  symmetry;apply preserve_ident.
-    apply F.
-pose (H:=X_FX_X_id).
-simpl in H.
-symmetry;etransitivity.
-   rewrite functor_map_morphism.
-   3: apply H.
-   reflexivity.
-   apply F.
+  symmetry; apply (preserve_comp (Functor_struct:=F)).
+rewrite <- (preserve_ident (Functor_struct:=F)).
+apply (functor_map_morphism (Functor_struct:=F)).
+unfold A.
+transitivity (id (Cat_struct:=C) 0).
+apply A_FA_A_id.
 reflexivity.
 Qed.
-Hint Resolve FX_comp_Finv_id_FX : falg.
+Hint Resolve F_inv_F_alpha_id : falg.
 
 Theorem inv_alpha_alpha_id : α ;; α_inv == id (F A).
 rewrite InitMorC.
-apply FX_comp_Finv_id_FX.
+auto with falg.
 Qed.
 Hint Resolve inv_alpha_alpha_id : falg.
 
 Program Instance F_alg_alpha_invertible : Invertible α := { inverse := α_inv }.
-Next Obligation.
-pose (H:=X_FX_X_id).
-apply H.
-Qed.
-Next Obligation.
-apply inv_alpha_alpha_id.
-Qed.
+Solve Obligations using auto with falg.
 
 Instance F_init_alg_alpha_iso : isomorphic C (F A) A :=
 { inv_morphism := α
