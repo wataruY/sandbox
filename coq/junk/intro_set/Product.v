@@ -331,10 +331,40 @@ Theorem relprod_assoc {A B C D} (R:Relation A B) (S:Relation B C) (T:Relation C 
   end.  
 Qed.
 
+Definition Transitive {A} (R:Relation A A) : Prop :=
+  forall x y z,(x,y) ∈ graph R -> (y,z) ∈ graph R -> (x,z) ∈ graph R.
+
+Theorem in_graph_in_base {A B} (R:Relation A B) x y : (x,y) ∈ graph R -> x ∈ A /\ y ∈ B. 
+intro H.
+destruct (in_product (graph_prop H)). 
+split; auto.
+Qed.
+
+
+Definition self_join_in_self_iff_trans {A} (R:Relation A A) :
+  graph (R ⋈ R) ⊆ graph R <-> Transitive R.
+split; intro H.
+  unfold Transitive; intros x y z Hxy Hyz.
+  destruct (in_graph_in_base Hxy) as [H0 H1].
+  destruct (in_graph_in_base Hyz) as [H2 H3].
+  apply H.
+  exists y; split;[assumption|].
+  exists y; split;[assumption|].
+  split; [reflexivity|].
+  tauto.
+
+  intros [x z] Hxz.
+  destruct Hxz as [y0 [Ay0 H']].
+  destruct H' as [y1 [Ay1 H']].
+  destruct_conjs.
+  subst.
+  eapply H; eassumption.
+Qed.
+
 Definition Surjective {A B} (R:Relation A B) : Prop :=
   forall x, x ∈ dom R -> exists y, (x,y) ∈ graph R.
 
-Program Definition RelCase {A B} (R:Relation A B) C D (H0:A ⊆ C) (H1:B ⊆ D):  Relation C D :=
+Program Definition RelCast {A B} (R:Relation A B) C D (H0:A ⊆ C) (H1:B ⊆ D):  Relation C D :=
   {| graph := graph R |}.
 Next Obligation.
   intros [x y] H.
