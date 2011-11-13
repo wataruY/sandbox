@@ -132,12 +132,32 @@ Hint Unfold pr2 : relation.
 
 Record Relation (A B:Ensemble U) :=
   { graph :> Ensemble (U*U); graph_prop : graph ⊆ (A × B) }.
-Definition dom {A B:Ensemble U} (R:Relation A B) := pr1 (graph R).
+Infix "--->" := Relation (at level 50). 
+Definition dom {A B:Ensemble U} (R:A ---> B) := pr1 (graph R).
+Theorem dom_prop {A B} (R:A ---> B) x :
+  x ∈ dom R <-> exists c, (x,c) ∈ R.
+split.
+  intro xR.
+  inversion_clear xR.
+  eauto.
+
+  intros H.
+  destruct_conjs.
+  constructor.
+  eauto.
+Qed.
 Definition cod {A B:Ensemble U} (R:Relation A B) := pr2 (graph R).
+Theorem cod_prop {A B} (R:A ---> B) y :
+  y ∈ cod R <-> exists x, (x,y) ∈ R.
+split.
+  inversion_clear 1.
+  eauto.
+
+  intro;destruct_conjs.
+  constructor; eauto.
+Qed.
 Hint Unfold dom : relation.
 Hint Unfold cod : relation.
-
-Infix "--->" := Relation (at level 50). 
 
 Theorem rel_inc_prod {A B} (R:A ---> B) : R ⊆ (A × B).
 apply graph_prop.
@@ -493,7 +513,7 @@ split.
 Qed.
 
 Definition Injective {A B} (R:Relation A B) : Prop :=
-  forall x y z, (x,z) ∈ R -> (y,z) ∈ R ->x = y.
+  forall x y z, (x,z) ∈ R -> (y,z) ∈ R -> x = y.
 
 Theorem R_join_Rinv_inc_iden_iff_injective {A B} (R:Relation A B) :
   (R ⋈ Inverse R) ⊆ Identity_Rel (dom R) <-> Injective R.
@@ -501,17 +521,11 @@ unfold dom.
 split.
   intros H x y z xRz yRz.
   assert (xRR'y:(x,y) ∈ (R ⋈ Inverse R)).
-    unfold In.
-    destruct (in_product (graph_prop xRz)).
-    destruct (in_product (graph_prop yRz)).
-    destruct_conjs.
-    exists z.    
-    split; [simpl in *; assumption|].
-    exists z.
-    split; [simpl in *; assumption|].
-    split;[reflexivity|].
-    split;[assumption|].
-    apply in_invR.
+    do 2 (exists z; split; [in_base_set|]).
+    split; [reflexivity|].
+    split; [assumption|].
+    simpl.
+    rewrite in_swap.
     assumption.
   destruct (H _ xRR'y).  
   assumption.
@@ -532,65 +546,84 @@ Qed.
 Definition RelProj1 {A B} (R:Relation A B) (C:Ensemble U) : Ensemble U :=
   fun x => exists y, y ∈ C /\ (x,y) ∈ R.
 
-Definition Surjective {A B} (R:Relation A B) : Prop :=
-  forall y, y ∈ cod R -> exists x, (x,y) ∈ R.
 Definition Total {A B} (R:Relation A B) :=
-  forall x, x ∈ dom R -> exists y, (x,y) ∈ R.
-(* Program Definition RelCast {A B} (R:Relation A B) C D (H0:A ⊆ C) (H1:B ⊆ D):  Relation C D := *)
-(*   {| graph := graph R |}. *)
-(* Next Obligation. *)
-(*   intros [x y] H. *)
-(*   assert (H':=in_product (graph_prop H)); simpl in H'. *)
-(*   split; auto with sets. *)
-(*     apply H0; tauto. *)
-(*     apply H1; tauto. *)
-(* Qed. *)
+  A = dom R.
 
-
-Theorem join_cod_dom_imply_total {A B} (R:Relation A B) : dom R = RelProj1 R (cod R) <-> Total R.
+Theorem join_cod_dom_imply_total {A B} (R:Relation A B) : A = RelProj1 R B <-> Total R.
 split; intro H.
-  (* -> *)
-  intros y Hy.
+  (* -> Total *)
+  apply Extensionality_Ensembles.
   apply Extension in H.  
   destruct H as [H0 H1].
-  destruct (in_dom Hy) as [x H].
-  destruct H as [xR xRy].
-  exists x.
-  assumption.
-  (* <- *)
-  apply Extensionality_Ensembles.
   split; intro x.
-    (* dom R ⊆ R.cod R *)
+    (* x ∈ A -> x ∈ dom R *)
+    intro Ax.
+    assert (xRy:=H0 _ Ax).
+    destruct xRy as [y Hy].
+    constructor.
+    exists y; tauto.
+    (* x ∈ dom -> x ∈ A *)
     intro xR.
-    destruct (in_dom xR) as [y Hy].
-    destruct Hy as [Ry xRy].
+    apply in_dom in xR.
+    destruct_conjs.
+    in_base_set.
+  (* Total -> *)
+  apply Extensionality_Ensembles.
+  apply Extension in H.
+  destruct H as [AR RA].
+  split; intro x.    
+    (* A -> R.B *)
+    intro Ax.
+    assert (xR:=AR x Ax).
+    apply in_dom in xR.
+    destruct xR as [y [Ry xRy]].
     exists y.
-    tauto.
-    (* R.cod R ⊆ dom R *)
-    intros xRcod.
-    inversion_clear xRcod as [y Hy].
-    destruct Hy as [Ry xRy].
-    unfold dom; econstructor; eexists; eassumption.
+    split; [in_base_set|assumption].
+    (* R.B -> A *)
+    intro xRB.
+    inversion_clear xRB as [y H].
+    destruct H as [By xRy].
+    in_base_set.
 Qed.    
 
 Definition RelProj2 {A B} (R:Relation A B) (C:Ensemble U) : Ensemble U :=
   fun y => exists x, x∈ (C ⋂ dom R) /\ y ∈ cod R.
 
+Definition Surjective {A B} (R:Relation A B) : Prop :=
+  cod R = B.
+
 Theorem iden_inc_cod_join_R_iff_surjective {A B} (R:Relation A B) :
-  cod R ⊆ RelProj2 R (dom R) <-> Surjective R.
+  B ⊆ RelProj2 R A <-> Surjective R.
   split.
     intros cod_inc_domR.
-    intros y Ry.
-    inversion_clear Ry as [x H].
-    eauto.
-
-    intros Rsurj y Ry.
-    destruct (Rsurj _ Ry) as [x Hx].
+    apply Extensionality_Ensembles.    
+    split; intro y.
+      (* y ∈ cod R -> y ∈ B *)
+      intro Ry.
+      
+      apply in_cod in Ry.
+      destruct_conjs.
+      in_base_set.
+      (* y ∈ B -> y ∈ cod R *)
+      intros By.
+      assert (ARy:=cod_inc_domR _ By).
+      inversion_clear ARy.
+      tauto.
+    (* Onto -> B ⊆ A.R *)
+    intro Rsurj.
+    apply Extension in Rsurj.
+    destruct Rsurj as [RB BR].
+    intros y By.
+    assert (Ry := BR _ By).
+    apply in_cod in Ry.
+    destruct Ry as [x H].
     exists x.
-    unfold dom.
+    destruct_conjs.
     split.
-      split; econstructor; eauto.
-      assumption.
+      (* x ∈ dom *)
+      split; [in_base_set|assumption].
+      (* y ∈ cod *)
+      eauto.
 Qed.
 
 End Relation.
