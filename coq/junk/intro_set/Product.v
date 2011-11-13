@@ -106,7 +106,7 @@ Section Relation.
 Variable U:Type.
 
 Record Relation (A B:Ensemble U) :=
-  { graph : Ensemble (U*U); graph_prop : graph ⊆ (A × B) }.
+  { graph :> Ensemble (U*U); graph_prop : graph ⊆ (A × B) }.
 Definition dom {A B:Ensemble U} (R:Relation A B) := Proj1 (graph R).
 Definition cod {A B:Ensemble U} (R:Relation A B) := Proj2 (graph R).
 Hint Unfold dom : relation.
@@ -135,13 +135,13 @@ Variable A B:Ensemble U.
 Variable R:Relation A B.
 
 
-Theorem graph_weak x y : (x,y) ∈ graph R -> (x,y) ∈ (A × B).
+Theorem graph_weak x y : (x,y) ∈ R -> (x,y) ∈ (A × B).
 intro H.
 apply graph_prop in H.
 assumption.
 Qed.
 
-Theorem inv_dom x : x ∈ dom R -> exists y, y ∈ cod R /\ (x,y) ∈ graph R.
+Theorem inv_dom x : x ∈ dom R -> exists y, y ∈ cod R /\ (x,y) ∈ R.
 autounfold with relation.
 intro H.
 apply inv_Proj1 in H.
@@ -149,7 +149,7 @@ destruct H as [y Hy].
 exists y.
 split; [econstructor|]; eassumption.
 Qed.
-Theorem inv_cod y : y ∈ cod R -> exists x, x ∈ dom R /\ (x,y) ∈ graph R.
+Theorem inv_cod y : y ∈ cod R -> exists x, x ∈ dom R /\ (x,y) ∈ R.
 autounfold with relation.
 intro H.
 apply inv_Proj2 in H.
@@ -157,7 +157,7 @@ destruct H as [x Hx].
 exists x.
 split;[ econstructor|]; eassumption.
 Qed.
-Theorem cod_dom_graph : graph R ⊆ (dom R × cod R). 
+Theorem cod_dom_graph : R ⊆ (dom R × cod R). 
 autounfold with relation.
 intros [x y] H.
 split;econstructor; eassumption.
@@ -196,9 +196,13 @@ Inductive Dup (A:Ensemble U) : Ensemble (U*U) :=
   Dup_intro x : x ∈ A -> (x,x) ∈ Dup A.
 
 Program Definition Identity_Rel (A:Ensemble U) : Relation A A :=
-  {| graph := A × A |}.
+  {| graph xy := let (x,y) := xy in x = y /\ x ∈ A |}.
 Next Obligation.
-auto with sets.
+intros [x y] H.
+unfold In in *.
+destruct_conjs.
+subst.
+split;auto with sets.
 Qed.
 
 Definition Swap {U V} (A:Ensemble (U*V)) : Ensemble (V*U) :=
@@ -270,7 +274,7 @@ split; intros [x y] H.
   apply H.
 Qed.
 
-Theorem inv_monotonic {A B} (R S:Relation A B) (H:graph R ⊆ graph S) : graph (Inverse R) ⊆ graph (Inverse S).
+Theorem inv_monotonic {A B} (R S:Relation A B) (H:R ⊆S) : Inverse R ⊆ Inverse S.
   simpl.
   intros [x y] Hx.
   unfold Swap,In in Hx|-*.
@@ -280,7 +284,8 @@ Theorem inv_monotonic {A B} (R S:Relation A B) (H:graph R ⊆ graph S) : graph (
 Qed.
 
 Program Definition RelProd {A B C D}  (R:Relation A B) (S:Relation C D) : Relation A D :=
-  {| graph wz := let (w,z) := wz in  exists x, x ∈ B /\ exists y, y ∈ C /\ x = y /\ (w,x) ∈ graph R /\ (y,z) ∈ graph S|}.
+  {| graph wz := let (w,z) := wz in
+    exists x, x ∈ B /\ exists y, y ∈ C /\ x = y /\ (w,x) ∈ R /\ (y,z) ∈ S|}.
 Next Obligation.
   intros [w z] H.
   unfold In in H.
@@ -304,7 +309,7 @@ Qed.
 
 
 Theorem relprod_graph_inv {A B C D} {R:Relation A B} {S:Relation C D} {w z} :
-  (w,z)∈graph (R⋈S) <-> exists x, x ∈ B /\ exists y, x = y /\ y ∈ C /\ (w,x) ∈ graph R /\ (y,z) ∈ graph S.
+  (w,z)∈ (R⋈S) <-> exists x, x ∈ B /\ exists y, x = y /\ y ∈ C /\ (w,x) ∈ R /\ (y,z) ∈ S.
 split;repeat match goal with
          | [H: ?A |- ?A ] => assumption
          | [H: _ ∈ ?A |- _ ∈ ?A ] => eassumption
@@ -331,18 +336,18 @@ Theorem relprod_assoc {A B C D} (R:Relation A B) (S:Relation B C) (T:Relation C 
   end.  
 Qed.
 
-Definition Transitive {A} (R:Relation A A) : Prop :=
-  forall x y z,(x,y) ∈ graph R -> (y,z) ∈ graph R -> (x,z) ∈ graph R.
+Definition Transitive {A B} (R:Relation A B) : Prop :=
+  forall x y z,(x,y) ∈ R -> (y,z) ∈ R -> (x,z) ∈ R.
 
-Theorem in_graph_in_base {A B} (R:Relation A B) x y : (x,y) ∈ graph R -> x ∈ A /\ y ∈ B. 
+Theorem in_graph_in_base {A B} (R:Relation A B) x y : (x,y) ∈ R -> x ∈ A /\ y ∈ B. 
 intro H.
 destruct (in_product (graph_prop H)). 
 split; auto.
 Qed.
 
 
-Definition self_join_in_self_iff_trans {A} (R:Relation A A) :
-  graph (R ⋈ R) ⊆ graph R <-> Transitive R.
+Definition self_join_in_self_iff_trans {A B} (R:Relation A B) :
+  (R ⋈ R) ⊆ R <-> Transitive R.
 split; intro H.
   unfold Transitive; intros x y z Hxy Hyz.
   destruct (in_graph_in_base Hxy) as [H0 H1].
@@ -359,6 +364,120 @@ split; intro H.
   destruct_conjs.
   subst.
   eapply H; eassumption.
+Qed.
+
+Definition Irreflexive {A B} (R:Relation A B) : Prop :=
+  forall x, (x,x) ∉ R.
+
+Theorem no_iden_intersection_r_r_imply_irrefl {A B} (R:Relation A B) :
+  Identity_Rel A ⋂ R = ∅ <-> Irreflexive R.
+split; intro H.
+  intros x Hx.
+  apply Extension in H.
+  destruct H as [H0 H1].
+  assert (Hiden:(x,x) ∈ graph (Identity_Rel A)).
+    unfold In.
+    simpl.
+    split; [reflexivity|].
+      assert (Ax:= graph_prop Hx).
+      apply in_product in Ax; destruct_conjs.
+      assumption.
+  absurd ((x,x) ∈ ∅).
+    auto with sets.
+    apply H0.
+    auto with sets.
+
+  apply Extensionality_Ensembles.
+  split; intros [x y] Hx.
+    absurd ((x,x) ∈ R).
+      apply H.
+      apply Intersection_inv in Hx.
+      destruct Hx as [H0 H1].
+      inversion_clear H0.
+      congruence.
+      
+      elim Hx.
+Qed.
+
+Definition Symmetric {A B} (R:Relation A B) : Prop :=
+  forall x y, (x,y) ∈ R -> (y,x) ∈ R.
+
+Lemma in_invR {A B} (R:Relation A B) x y : (x,y) ∈ Inverse R <-> (y,x) ∈ R.
+split; intro H;  unfold In in *; simpl in *;  unfold Swap in *; simpl in *;  assumption.
+Qed.
+
+Theorem rop_inc_r_iff_symm {A B} (R:Relation A B) :
+  Inverse R ⊆ R <-> Symmetric R.
+split.
+  intro Rop_inc_R.
+  intros x y Rxy.
+  apply (Rop_inc_R (y,x)).
+  apply in_invR.
+  assumption.
+
+  intro Rsym.
+  intros [x y] Rinv.
+  apply Rsym.
+  apply in_invR in Rinv.
+  replace (graph (Inverse (Inverse R))) with (graph R) in Rinv.
+    assumption.
+    (* inv_inv *)
+    symmetry.
+    apply Extensionality_Ensembles.
+    setoid_replace (Same_set (U * U) (Inverse (Inverse R)) R) with
+      ((Inverse (Inverse R))  == R).
+    apply inv_inv.
+    tauto.
+Qed.
+
+Definition Functional {A B} (R:Relation A B) : Prop :=
+  forall x y z, (x,y) ∈ R -> (x,z) ∈ R -> y = z.
+
+Lemma in_swap {A B} (R:Relation A B) x y : (x,y) ∈ Swap R = (y,x) ∈ R.
+reflexivity.
+Qed.
+
+Theorem invR_join_R_inc_iden_iff_functional {A B} (R:Relation A B) :
+  (Inverse R ⋈ R) ⊆ Identity_Rel (cod R) <-> Functional R.
+  unfold cod.  
+split.
+  intro invR_R_inc_Id.
+  intros x y z Hxy Hxz.
+  assert (invRR : (y,z) ∈ (Inverse R ⋈ R)).
+    unfold In.
+    simpl.
+    exists x.
+    split.
+    Ltac in_base_set :=
+      match goal with
+        | [R:Relation ?A ?B, Hin:(?X,?Y) ∈ ?R |- ?X ∈ ?A ] =>
+          let H' := fresh in assert (H':=graph_prop Hin);
+            apply in_product in H'; simpl in H'; tauto
+      end.
+    in_base_set.
+    exists x;split.
+    in_base_set.
+    split; [reflexivity|].
+    split; [|assumption].
+    rewrite in_swap.
+    assumption.
+    destruct (invR_R_inc_Id _ invRR).
+    assumption.
+
+  intros Rfun [x y] iRRxy.
+    unfold In in iRRxy.
+    simpl in iRRxy.
+    destruct iRRxy as [z [Hz H]].
+    destruct H as [w [Hw H]].
+    destruct H as [eq_z_w [swapRxz Rwy]].
+    subst.
+    rewrite in_swap in swapRxz.
+    constructor.
+    eapply Rfun.
+      eassumption.
+      assumption.
+    econstructor.
+    eassumption.
 Qed.
 
 Definition Surjective {A B} (R:Relation A B) : Prop :=
