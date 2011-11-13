@@ -5,6 +5,7 @@ Require Import SetoidClass.
 Require Import Setoid.
 Require Import Program.Tactics.
 Require Import Classical_sets.
+Require Import ChoiceFacts.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -480,52 +481,105 @@ split.
     eassumption.
 Qed.
 
-Definition Surjective {A B} (R:Relation A B) : Prop :=
-  forall x, x ∈ dom R -> exists y, (x,y) ∈ graph R.
+Definition Injective {A B} (R:Relation A B) : Prop :=
+  forall x y z, (x,z) ∈ R -> (y,z) ∈ R ->x = y.
 
-Program Definition RelCast {A B} (R:Relation A B) C D (H0:A ⊆ C) (H1:B ⊆ D):  Relation C D :=
-  {| graph := graph R |}.
-Next Obligation.
-  intros [x y] H.
-  assert (H':=in_product (graph_prop H)); simpl in H'.
-  split; auto with sets.
-    apply H0; tauto.
-    apply H1; tauto.
+Theorem R_join_Rinv_inc_iden_iff_injective {A B} (R:Relation A B) :
+  (R ⋈ Inverse R) ⊆ Identity_Rel (dom R) <-> Injective R.
+unfold dom.
+split.
+  intros H x y z xRz yRz.
+  assert (xRR'y:(x,y) ∈ (R ⋈ Inverse R)).
+    unfold In.
+    destruct (in_product (graph_prop xRz)).
+    destruct (in_product (graph_prop yRz)).
+    destruct_conjs.
+    exists z.    
+    split; [simpl in *; assumption|].
+    exists z.
+    split; [simpl in *; assumption|].
+    split;[reflexivity|].
+    split;[assumption|].
+    apply in_invR.
+    assumption.
+  destruct (H _ xRR'y).  
+  assumption.
+
+  intros Rinj [x y] xRR'y.
+  destruct xRR'y as [x' [Bx' H]].
+  destruct H as [y' [By' H]].
+  destruct H as [x'_eq_y' [xRx' y'R'y]].
+  apply in_invR in y'R'y.
+  subst.
+  do 2 rewrite in_invR in y'R'y.
+  constructor.
+    symmetry;exact (Rinj _ _ _ y'R'y xRx').
+    econstructor.
+    eassumption.
 Qed.
 
 Definition RelProj1 {A B} (R:Relation A B) (C:Ensemble U) : Ensemble U :=
-  fun x => exists y, y∈ (C ⋂ cod R) /\ x ∈ dom R.
-Hint Unfold Surjective : relation. 
-Hint Unfold RelProj1 : relation.
+  fun x => exists y, y ∈ C /\ (x,y) ∈ R.
 
-Theorem join_cod_dom_imply_surjective {A B} (R:Relation A B) : dom R == RelProj1 R (cod R) <-> Surjective R.
+Definition Surjective {A B} (R:Relation A B) : Prop :=
+  forall y, y ∈ cod R -> exists x, (x,y) ∈ R.
+Definition Total {A B} (R:Relation A B) :=
+  forall x, x ∈ dom R -> exists y, (x,y) ∈ R.
+(* Program Definition RelCast {A B} (R:Relation A B) C D (H0:A ⊆ C) (H1:B ⊆ D):  Relation C D := *)
+(*   {| graph := graph R |}. *)
+(* Next Obligation. *)
+(*   intros [x y] H. *)
+(*   assert (H':=in_product (graph_prop H)); simpl in H'. *)
+(*   split; auto with sets. *)
+(*     apply H0; tauto. *)
+(*     apply H1; tauto. *)
+(* Qed. *)
+
+
+Theorem join_cod_dom_imply_total {A B} (R:Relation A B) : dom R = RelProj1 R (cod R) <-> Total R.
 split; intro H.
-  intros x Hx.
-  apply inv_Proj1.
+  (* -> *)
+  intros y Hy.
+  apply Extension in H.  
+  destruct H as [H0 H1].
+  destruct (inv_dom Hy) as [x H].
+  destruct H as [xR xRy].
+  exists x.
   assumption.
-
-  split; intros x Hx.
+  (* <- *)
+  apply Extensionality_Ensembles.
+  split; intro x.
     (* dom R ⊆ R.cod R *)
-    unfold In,RelProj1.
-    replace (cod R ⋂ cod R) with (cod R).
-    assert (xRy: exists y : U, (x, y) ∈ graph R).
-      exact (H x Hx).
-    destruct xRy as [y Hy].
+    intro xR.
+    destruct (inv_dom xR) as [y Hy].
+    destruct Hy as [Ry xRy].
     exists y.
-    unfold cod,dom.
-    split.
-      eapply ProjR_intro; eassumption.
-      eapply ProjL_intro; eassumption.
-    (* ⋂ idemp *)
-    apply Extensionality_Ensembles.
-      split; intros y Hy.
-        split; assumption.
-        inversion Hy; assumption.
-
+    tauto.
     (* R.cod R ⊆ dom R *)
-    unfold RelProj1 ,In in Hx.
-    destruct Hx as [y Hy].
-    apply Hy.
+    intros xRcod.
+    inversion_clear xRcod as [y Hy].
+    destruct Hy as [Ry xRy].
+    unfold dom; econstructor; eassumption.
 Qed.    
+
+Definition RelProj2 {A B} (R:Relation A B) (C:Ensemble U) : Ensemble U :=
+  fun y => exists x, x∈ (C ⋂ dom R) /\ y ∈ cod R.
+
+Theorem iden_inc_cod_join_R_iff_surjective {A B} (R:Relation A B) :
+  cod R ⊆ RelProj2 R (dom R) <-> Surjective R.
+  split.
+    intros cod_inc_domR.
+    intros y Ry.
+    inversion_clear Ry as [x H].
+    eauto.
+
+    intros Rsurj y Ry.
+    destruct (Rsurj _ Ry) as [x Hx].
+    exists x.
+    unfold dom.
+    split.
+      split; econstructor; eauto.
+      assumption.
+Qed.
 
 End Relation.
