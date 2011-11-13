@@ -42,12 +42,12 @@ Theorem product_prop {U V A B} (x:U) (y:V) : (x,y) ∈ (A × B) <-> (x∈A /\ y�
 
   constructor; tauto.
 Qed.
+
 Theorem product_elem_swap {U V A B} (x:U) (y:V) : (x,y) ∈ (A×B) <-> (y,x) ∈ (B×A).
   split; intros H;
     apply in_product in H; simpl in *;
       constructor; tauto.
 Qed.
-
 
 Section empty_product.
 Variable U V:Type.
@@ -76,59 +76,89 @@ contradict HB.
 contradict H.
 Qed.
 
-  Section Projection.
-    Variable U V:Type.
-    Variable AB:Ensemble (U*U).
-    Inductive Proj1  : Ensemble U :=
-      ProjL_intro x y : (x,y) ∈ AB -> x ∈ Proj1.
-    Inductive Proj2  : Ensemble U :=
-      ProjR_intro x y : (x,y) ∈ AB -> y ∈ Proj2.
-    Theorem inv_Proj1 x : x ∈ Proj1 -> exists y, (x,y) ∈ AB.
-      intros H.
-      inversion_clear H.
-      match goal with | [H: (_,?Y) ∈ AB |- _] => exists Y end.
-      assumption.
-    Qed.
-    Theorem inv_Proj2 y : y ∈ Proj2 -> exists x, (x,y) ∈ AB.
-      intro H.
-      inversion_clear H.
-      match goal with | [H: (?X,_) ∈ AB |- _] => exists X end.
-      assumption.
-    Qed.
-    Variable A: Ensemble U.
-    Variable B: Ensemble V.
-    End Projection.
+Theorem Empty_Product_l {U V} (B:Ensemble V) : (Empty_set U) × B = ∅.
+extensionality; intros x H.
+  apply in_product in H as [H0 HB].
+  contradiction.
+  contradiction.
+Qed.
+
+Section Projection.
+  Variable U V:Type.
+  Variable A:Ensemble U.
+  Variable B:Ensemble V.
+  Section Proj_def.
+  Variable S:Ensemble (U*V).
+  Inductive Proj1 : Ensemble U :=
+    Proj1_intro x : (exists y, (x,y) ∈ S) -> x ∈ Proj1.
+  Theorem in_proj1 x : x ∈ Proj1 -> (exists y, (x,y) ∈ S).
+    inversion_clear 1.
+    assumption.
+  Qed.
+  Inductive Proj2  : Ensemble V :=
+    Proj2_intro y : (exists x, (x,y) ∈ S) -> y ∈ Proj2.
+  Theorem in_proj2 y : y ∈ Proj2 -> (exists x, (x,y) ∈ S).
+    inversion_clear 1; assumption.
+  Qed.
+  End Proj_def.
+  Theorem Proj_prop :
+    (A × B) = (Proj1 (A × B) × Proj2 (A × B)).
+    apply Extensionality_Ensembles.
+    split; intros [x y] H.
+    split; econstructor; eauto.
+    repeat match goal with
+             | [H: ?X |- ?X ] => assumption
+             | [|- (_,_) ∈ (_ × _)] => split
+             | [H: (_,_) ∈ (_ × _) |- _] => apply in_product in H ; simpl in H
+             | [H: _ /\ _ |- _] => destruct H
+             | [H: _ ∈ Proj1 _ |- _] => apply in_proj1 in H; destruct H
+             | [H: _ ∈ Proj2 _ |- _] => apply in_proj2 in H; destruct H  
+           end.
+  Qed.
+End Projection.
 
 End Product.
 Infix "×" := (Product) (at level 30).
+
 
 Section Relation.
 
 Variable U:Type.
 
+Let pr1 := @Proj1 U U.
+Let pr2 := @Proj2 U U.
+Hint Unfold pr1 : relation.
+Hint Unfold pr2 : relation.
+
 Record Relation (A B:Ensemble U) :=
   { graph :> Ensemble (U*U); graph_prop : graph ⊆ (A × B) }.
-Definition dom {A B:Ensemble U} (R:Relation A B) := Proj1 (graph R).
-Definition cod {A B:Ensemble U} (R:Relation A B) := Proj2 (graph R).
+Definition dom {A B:Ensemble U} (R:Relation A B) := pr1 (graph R).
+Definition cod {A B:Ensemble U} (R:Relation A B) := pr2 (graph R).
 Hint Unfold dom : relation.
 Hint Unfold cod : relation.
 
-Let Pairoid := Ensemble_oid (U*U).
-Ltac destruct_Proj :=
-  repeat (try match goal with 
-        | [H: _ ∈ Proj1 _ |- _ ] => apply inv_Proj1 in H
-      end ;
-  try match goal with
-        | [H: _ ∈ Proj2 _ |- _ ] => apply inv_Proj2 in H
-      end).
+Infix "--->" := Relation (at level 50). 
 
-Ltac derive_base := do 3
-    match goal with
-      | [H:ex _ |- _ ] => destruct H
-      | [H:_ ∈ graph _ |- _] => apply graph_prop in H
-      | [H:_ ∈ (_ × _) |- _] => apply in_product in H; simpl in H; destruct H
-    end.
-Ltac proj_imply_base := destruct_conjs; try split; destruct_Proj; repeat derive_base; assumption.
+Theorem rel_inc_prod {A B} (R:A ---> B) : R ⊆ (A × B).
+apply graph_prop.
+Qed.
+
+Let Pairoid := Ensemble_oid (U*U).
+
+Ltac in_base_set := try match goal with
+    | [R: ?A ---> _|- ?X ∈ ?A] =>
+      eapply proj1;
+        try match goal with
+          | [H: (X,?Y) ∈ graph R |- _] =>
+            change (X ∈ A) with (fst (X,Y) ∈ A)
+        end
+    | [R: _ ---> ?B|- ?Y ∈ ?B] =>
+      eapply proj2;
+        try match goal with
+          | [H: (?X,Y) ∈ graph R |- _] =>
+            change (Y ∈ B) with (snd (X,Y) ∈ B)
+        end
+  end;apply in_product; eapply graph_prop; eassumption.
 
 Section Lemmas.
 
@@ -137,43 +167,56 @@ Variable R:Relation A B.
 
 
 Theorem graph_weak x y : (x,y) ∈ R -> (x,y) ∈ (A × B).
-intro H.
-apply graph_prop in H.
-assumption.
+apply graph_prop.
 Qed.
 
-Theorem inv_dom x : x ∈ dom R -> exists y, y ∈ cod R /\ (x,y) ∈ R.
+Theorem in_dom x : x ∈ dom R -> exists y, y ∈ cod R /\ (x,y) ∈ R.
 autounfold with relation.
 intro H.
-apply inv_Proj1 in H.
+apply in_proj1 in H.
 destruct H as [y Hy].
 exists y.
-split; [econstructor|]; eassumption.
+split.
+  constructor.
+  eauto.
+
+  assumption.
 Qed.
-Theorem inv_cod y : y ∈ cod R -> exists x, x ∈ dom R /\ (x,y) ∈ R.
+
+Theorem in_cod y : y ∈ cod R -> exists x, x ∈ dom R /\ (x,y) ∈ R.
 autounfold with relation.
 intro H.
-apply inv_Proj2 in H.
+apply in_proj2 in H.
 destruct H as [x Hx].
 exists x.
-split;[ econstructor|]; eassumption.
+split.
+  constructor.
+  eauto.
+
+  assumption.
 Qed.
+
 Theorem cod_dom_graph : R ⊆ (dom R × cod R). 
 autounfold with relation.
 intros [x y] H.
-split;econstructor; eassumption.
+split; constructor; eauto.
 Qed.
+
 
 Theorem cod_dom_inc_product : (dom R × cod R) ⊆ (A × B).
   autounfold with relation.
   intros [x y] H.
   apply in_product in H.
   simpl in H.
-  proj_imply_base.
+  destruct H as [H0 H1].
+  do 2 match goal with
+    | [H: _ ∈ Proj1 _ |-_] => apply in_proj1 in H
+    | [H: _ ∈ Proj2 _ |-_] => apply in_proj2 in H
+  end.
+  destruct_conjs; split; eauto; in_base_set.
 Qed.
 
 End Lemmas.
-
 
 Program Instance Relation_oid {A B} : Setoid (Relation A B) :=
   { equiv R R' := graph R == graph R' }.
@@ -193,9 +236,6 @@ Next Obligation.
 auto with sets.
 Qed.
 
-Inductive Dup (A:Ensemble U) : Ensemble (U*U) :=
-  Dup_intro x : x ∈ A -> (x,x) ∈ Dup A.
-
 Program Definition Identity_Rel (A:Ensemble U) : Relation A A :=
   {| graph xy := let (x,y) := xy in x = y /\ x ∈ A |}.
 Next Obligation.
@@ -214,8 +254,7 @@ Program Definition Inverse {A B} (R:Relation A B) : Relation B A :=
   {| graph := Swap (graph R) |}.
 Next Obligation.
 intros [x y] H.
-unfold Swap,In in H.
-simpl in H.
+unfold Swap,In in H;simpl in H.
 apply product_elem_swap.
 eapply graph_prop.
 eassumption.
@@ -224,7 +263,8 @@ Qed.
 Theorem dom_weak {A B} (R:Relation A B) : dom R ⊆ A.
 autounfold with relation.
 intros x H.
-proj_imply_base.
+apply in_proj1 in H; destruct_conjs.
+in_base_set.
 Qed.
 
 Let Soid := Ensemble_oid U.
@@ -233,17 +273,12 @@ Theorem dom_inv_cod {A B} (R:Relation A B) : dom (Inverse R) == cod R.
 autounfold with relation.
 simpl.
 split; intros x H.
-destruct_Proj.
-destruct H as [y Hy].
-esplit.
-instantiate (1:=y).
-unfold Swap,In in Hy.
-simpl in Hy.
-assumption.
+apply in_proj1 in H.
+constructor.
+eassumption.
 
-inversion_clear H.
-econstructor.
-unfold In,Swap.
+apply in_proj2 in H.
+constructor.
 eassumption.
 Qed.
 
@@ -265,21 +300,12 @@ Qed.
 
 Theorem inv_inv {A B} (R:Relation A B) : Inverse (Inverse R) == R.
 simpl.
-split; intros [x y] H.
-  unfold Swap in H.
-  unfold In in H.
-  simpl in H.
-  assumption.
-
-  unfold Swap, In.
-  apply H.
+split; intros [x y] H;  assumption.
 Qed.
 
 Theorem inv_monotonic {A B} (R S:Relation A B) (H:R ⊆S) : Inverse R ⊆ Inverse S.
   simpl.
   intros [x y] Hx.
-  unfold Swap,In in Hx|-*.
-  simpl in Hx|-*.
   apply H.
   assumption.
 Qed.
@@ -289,25 +315,15 @@ Program Definition RelProd {A B C D}  (R:Relation A B) (S:Relation C D) : Relati
     exists x, x ∈ B /\ exists y, y ∈ C /\ x = y /\ (w,x) ∈ R /\ (y,z) ∈ S|}.
 Next Obligation.
   intros [w z] H.
-  unfold In in H.
-  destruct H as [x [Hx H]].
-  destruct H as [y [Hy [Hxy H]]].
-  destruct H as [Hw Hz].
-  split.
-  assert (Hab : (w,x) ∈ (A×B)).
-    exact (graph_prop Hw).
-  inversion_clear Hab; assumption.
-
-  assert (Hcd : (y,z) ∈ (C×D)).
-    exact (graph_prop Hz).
-  inversion_clear Hcd; assumption.
+  destruct H.
+  destruct_conjs.
+  split; in_base_set.
 Qed.
 Infix "⋈" := RelProd (at level 80).
 Program Instance rel_oid {A B} : Setoid (Relation A B) := { equiv R S := graph R = graph S }.
 Next Obligation.
   split; autounfold; congruence.
 Qed.
-
 
 Theorem relprod_graph_inv {A B C D} {R:Relation A B} {S:Relation C D} {w z} :
   (w,z)∈ (R⋈S) <-> exists x, x ∈ B /\ exists y, x = y /\ y ∈ C /\ (w,x) ∈ R /\ (y,z) ∈ S.
@@ -449,12 +465,6 @@ split.
     simpl.
     exists x.
     split.
-    Ltac in_base_set :=
-      match goal with
-        | [R:Relation ?A ?B, Hin:(?X,?Y) ∈ ?R |- ?X ∈ ?A ] =>
-          let H' := fresh in assert (H':=graph_prop Hin);
-            apply in_product in H'; simpl in H'; tauto
-      end.
     in_base_set.
     exists x;split.
     in_base_set.
@@ -478,6 +488,7 @@ split.
       eassumption.
       assumption.
     econstructor.
+    eexists.
     eassumption.
 Qed.
 
@@ -515,7 +526,7 @@ split.
   constructor.
     symmetry;exact (Rinj _ _ _ y'R'y xRx').
     econstructor.
-    eassumption.
+    eexists; eassumption.
 Qed.
 
 Definition RelProj1 {A B} (R:Relation A B) (C:Ensemble U) : Ensemble U :=
@@ -542,7 +553,7 @@ split; intro H.
   intros y Hy.
   apply Extension in H.  
   destruct H as [H0 H1].
-  destruct (inv_dom Hy) as [x H].
+  destruct (in_dom Hy) as [x H].
   destruct H as [xR xRy].
   exists x.
   assumption.
@@ -551,7 +562,7 @@ split; intro H.
   split; intro x.
     (* dom R ⊆ R.cod R *)
     intro xR.
-    destruct (inv_dom xR) as [y Hy].
+    destruct (in_dom xR) as [y Hy].
     destruct Hy as [Ry xRy].
     exists y.
     tauto.
@@ -559,7 +570,7 @@ split; intro H.
     intros xRcod.
     inversion_clear xRcod as [y Hy].
     destruct Hy as [Ry xRy].
-    unfold dom; econstructor; eassumption.
+    unfold dom; econstructor; eexists; eassumption.
 Qed.    
 
 Definition RelProj2 {A B} (R:Relation A B) (C:Ensemble U) : Ensemble U :=
