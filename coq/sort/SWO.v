@@ -5,7 +5,7 @@ Require Import RelationClasses.
 Require Import Relation_Operators.
 Require Import Setoid.
 Require Import SetoidClass.
-Require Import Classical.
+Require Import Decidable.
 
 Set Implicit Arguments.
 
@@ -22,7 +22,8 @@ Section Incomparable.
 End Incomparable.
   
 Section SWO_aux.
-  Context `(R:relation A ).
+  Context `(R:relation A).
+  Hypothesis Rdec : forall x y, decidable (R x y).
   Variable irrefl : Irreflexive R.
   Variable trans : Transitive R.
   Definition Rcase := forall x y z , R x y -> R x z \/ R z y.
@@ -34,38 +35,15 @@ Section SWO_aux.
   Theorem incomp_trans_imp_rcase : Transitive (incomp R) -> Rcase.
   unfold Transitive, incomp.
   intros Htrans x y z H.
-  pose proof (irrefl_trans_asymm H) as H0.
-  apply NNPP.
-  intro H1.
-  elim H0.
-  apply not_or_and in H1.
-  destruct_conjs.
-  destruct (classic (R y z)).
-   absurd (R x z).
-    assumption.
-    
-    etransitivity; eauto   .
-    
-   destruct (classic (R z x)).
-    absurd (R z y).
-     assumption.
-     
-     etransitivity; eauto   .
-     
-    assert (incomp R y z) as H5.
-     split; assumption.
-     
-     assert (incomp R z x) as H6.
-      split; assumption.
-      
-      absurd (R x y).
-       eapply proj2.
-       eapply Htrans.
-        apply H5.
-        
-        apply H6.
-        
-       assumption.       
+  pose proof (irrefl_trans_asymm H:~R y x) as nRyx.
+  destruct (Rdec x z) as [?|nRxz]; first tauto.
+  destruct (Rdec z y) as [?|nRzy]; first tauto.
+  destruct (Rdec y z) as [|nRyz]; first (left;etransitivity;by eauto).
+  assert (Hyz: incomp R y z); first done.
+  destruct (Rdec z x) as [|nRzs]; first (right; etransitivity; by eassumption).
+  assert (Hzx: incomp R z x); first done.
+  destruct (Htrans _ _ _ Hyz Hzx).
+  contradiction.
   Qed.
   Instance rcase_incomp_trans (H:Rcase) : Transitive (incomp R).
   unfold incomp.
@@ -91,8 +69,11 @@ Section SWO.
   apply swo_incomp_trans.
   Qed.
   Instance swo_incomp_oid : Setoid A := {| equiv := incomp R |}.
+
+  Hypothesis Rdec : forall x y, decidable (R x y).
+  
   Theorem swo_case : Rcase R.
-  apply incomp_trans_imp_rcase; apply SWO.
+  apply incomp_trans_imp_rcase; by (apply Rdec || apply SWO).
   Qed.
   Theorem incomp_Proper_on_SWO : Proper (equiv ==> equiv ==> iff) R.
   intros x y Hxy z w Hzw; split; intro H.
@@ -108,17 +89,16 @@ Section SWO.
   assumption.
   destruct Hzw; contradiction.
   Qed.
+  
+  Lemma or_distrib_over_and p q r : p /\ q \/ r <-> (p \/ r) /\ (q \/ r).
+    tauto.
+  Qed.
   Theorem swo_not_inv_or_incomp x y : ~ R x y -> incomp R x y \/ R y x.
   intro H.
-  apply NNPP.
-  contradict H.
-  apply not_or_and in H.
-  unfold incomp in H.
-  destruct H as [H0 H1].
-  apply not_and_or in H0.
-  destruct H0 as [H0|H0]; apply NNPP in H0.
-    assumption.
-    contradiction.
+  unfold incomp.
+  apply or_distrib_over_and.
+  split; first tauto.
+  destruct (Rdec y x); first right;tauto.
   Qed.
 End SWO.
 
@@ -128,8 +108,9 @@ Section TotalPreorder.
       topo_trans : Transitive R ;
       topo_total x y : R x y \/ R y x
     }.
-  
-  Instance swo_compl_topo `(SWO:StrictWeakOrder A R) : TotalPreorder (complement R).
+  Context `(SWO:StrictWeakOrder A R) (Rdec:forall x y, decidable (R x y)).
+  Let Hcase := (swo_not_inv_or_incomp _ Rdec).
+  Instance swo_compl_topo : TotalPreorder (complement R).
   unfold complement; simpl.
   split.
     move => x /=.
@@ -137,31 +118,31 @@ Section TotalPreorder.
 
     pose swo_trans.
     move => x y z H0 H1; simpl in *.
-    apply swo_not_inv_or_incomp in H0; apply swo_not_inv_or_incomp in H1.
+    apply Hcase in H0; apply Hcase in H1.
   destruct H0; destruct H1.
   eapply proj1.
-  eapply swo_incomp_trans; eauto.
+  eapply swo_incomp_trans; by eauto.
   intro H1.
   destruct H.
   elim H.
-  etransitivity; eauto.
+  etransitivity; by eauto.
   intro H1.
   unfold incomp in *; destruct_conjs.
   absurd (R y z); first assumption.
-  etransitivity; eauto.
+  by etransitivity; eauto.
   intros.
   apply swo_irrefl with y.
   transitivity x; first assumption.
-  etransitivity; eauto.
+  by etransitivity; eauto.
 
   move => x y.
-  destruct (classic (R x y)).
+  destruct (Rdec x y).
   right; apply swo_asym; by eauto.
-  apply swo_not_inv_or_incomp in H; destruct H.
+  apply Hcase in H; destruct H.
     destruct H; tauto.
     left; apply swo_asym; by eauto.
   Qed.
-  Instance swo_inv_comp_topo `(SWO:StrictWeakOrder A R) : TotalPreorder (inverse (complement R)).
+  Instance swo_inv_comp_topo : TotalPreorder (inverse (complement R)).
   split.
     move => x.
     apply swo_irrefl.
@@ -169,8 +150,8 @@ Section TotalPreorder.
     unfold complement, Basics.flip.
     pose swo_trans.
     move => x y z Hxy Hyz; simpl in *.
-    apply swo_not_inv_or_incomp in Hxy.
-    apply swo_not_inv_or_incomp in Hyz.
+    apply Hcase in Hxy.
+    apply Hcase in Hyz.
     move => H.
     destruct or Hxy; destruct or Hyz.
       move: H.
@@ -191,11 +172,11 @@ Section TotalPreorder.
 
     unfold complement, Basics.flip.
     move => x y.
-    destruct (classic (R x y)).
-      apply swo_asym in H; tauto.
-      apply swo_not_inv_or_incomp in H; destruct H.
+    destruct (Rdec x y).
+      apply (swo_asym _) in H; tauto.
+      apply Hcase in H; destruct H.
         destruct H; tauto.
-        apply swo_asym in H; tauto.
+        apply (swo_asym _) in H; tauto.
   Qed.
 End TotalPreorder.
 
